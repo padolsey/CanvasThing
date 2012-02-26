@@ -1,0 +1,143 @@
+<!doctype html>
+
+<style>
+canvas {
+  border: 10px solid black;
+  float: left;
+  clear: left;
+  margin: 0;
+  padding: 0;
+}
+body {
+  margin: 0;
+  padding: 20px;
+}
+</style>
+
+<body style="background:#CCC;">
+
+
+
+
+<script src="../CanvasThing.js"></script>
+<script>
+
+var c = new CanvasThing(350, 350),
+    planetX = 25,
+    planetY = 25,
+    down = false;
+
+document.body.appendChild(c.getElement());
+document.body.appendChild(c.eventCanvas);
+
+var planet = new CanvasThing(300, 300, function(x, y, color) {
+
+  this.clearRect(0, 0, this.width, this.height)
+
+  var gradient = this.createLinearGradient(0,0,0,y+100);
+  gradient.addColorStop(0, "transparent");
+  gradient.addColorStop(0.5, color || 'red');
+  gradient.addColorStop(1, 'yellow');
+
+  this.set('fillStyle', gradient);
+  this.beginPath();
+  this.arc(x, y, 150, 0, Math.PI*2, false);
+  this.closePath();
+  this.fill();
+
+}).draw(150, 150);
+
+planet.on('mousedown', function() {
+  down = true;
+});
+
+planet.on('mouseenter', function() {
+  c.getElement().style.cursor = 'move';
+});
+
+planet.on('mouseleave', function() {
+  c.getElement().style.cursor = '';
+});
+
+c.on('*:mouseup', function() {
+  down = false;
+});
+
+c.on('*:mousemove', function(e) {
+  if (down) {
+    planetX = e.x - 150;
+    planetY = e.y - 150;
+  }
+});
+
+
+
+
+function Orbiter() {
+  this.cx = 150;
+  this.cy = 150;
+  this.thing = new CanvasThing(50, 50, function() {
+
+    console.log('->Draw Orbiter');
+
+    var gradient = this.createLinearGradient(0,0,0,50);
+    gradient.addColorStop(0, "blue");
+    gradient.addColorStop(1, '#000');
+
+    this.set('fillStyle', gradient);
+    this.beginPath();
+    this.arc(25, 25, 25, 0, Math.PI*2, false);
+    this.closePath();
+    this.fill();
+  }).draw();
+  this.ang = 0;
+  this.isPlaying = true;
+}
+
+Orbiter.prototype.step = function() {
+  if (!this.isPlaying) return;
+  this.ang += 2;
+  this.ang = this.ang % 360;
+  var ang = Math.PI/180 * this.ang;
+  this.x = this.cx + 150 * Math.cos(ang);
+  this.y = this.cy + 150 * Math.sin(ang);
+  c.clear();
+  planet.place(c, planetX, planetY);
+  this.thing.place(c, planetX + this.x - 25, planetY + this.y - 25);
+
+};
+
+Orbiter.prototype.stop = function() {
+  this.isPlaying = false;
+};
+
+Orbiter.prototype.play = function() {
+  this.isPlaying = true;
+};
+
+orbiter = new Orbiter;
+
+
+
+setInterval(function() {
+  orbiter.step();
+  c.mousemove();
+}, 10);
+
+
+orbiter.thing.on('mouseenter', function() {
+  orbiter.stop();
+});
+
+orbiter.thing.on('mouseleave', function() {
+  orbiter.play();
+});
+
+
+
+
+
+</script>
+
+
+</body>

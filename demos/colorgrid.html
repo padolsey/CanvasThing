@@ -1,0 +1,83 @@
+<!doctype html>
+
+<meta charset="utf-8" />
+<title>Blah</title>
+
+<style>
+canvas {
+  border: 10px solid black;
+  float: left;
+  clear: left;
+  margin: 0;
+  padding: 0;
+}
+body {
+  margin: 0;
+  padding: 20px;
+}
+</style>
+
+<body style="background:#CCC;">
+
+<h1>Something here</h1>
+
+<div id="c">
+...
+</div>
+
+<script src="http://code.jquery.com/jquery-1.4.2.js"></script>
+<script src="../CanvasThing.js"></script>
+<script>
+
+var myCanvas = new CanvasThing(700, 700);
+
+document.getElementById('c').appendChild(myCanvas.getElement());
+document.getElementById('c').appendChild(myCanvas.eventCanvas);
+
+function Square(x, y, w, h, c) {
+  var me = this;
+  this.x = x;
+  this.y = y;
+  this.display = new CanvasThing(w, h, function(color) {
+    this.set('fillStyle', color);
+    this.fillRect(0, 0, w, h);
+  }).draw(c);
+  this.display.on('mouseenter', function() {
+    c = 'blue';
+    me.draw();
+  });
+  this.draw = function() {
+    this.display.draw(c).place(myCanvas, this.x, this.y);
+    return this;
+  }
+}
+
+function randColor() {
+  return 'rgb(' + ~~(Math.random()*255) + ',' + ~~(Math.random()*255) + ',' + ~~(Math.random()*255) + ')';
+}
+
+squares = [];
+
+var _ = 20;
+
+for (var r = 0; r < 700/_; ++r) {
+  for (var c = 0; c < 700/_; ++c) {
+    squares.push(
+      new Square(r*_, c*_, _, _, randColor())
+    );
+  }
+}
+
+draw();
+
+function draw() {
+  myCanvas.clear();
+  squares.forEach(function(s) {
+    s.draw().display.place(myCanvas, s.x, s.y);
+  });
+}
+
+</script>
+
+
+</body>
