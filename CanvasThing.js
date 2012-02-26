@@ -147,6 +147,8 @@ CanvasEventedInterface.prototype.drawToID = function(id) {
 };
 
 CanvasEventedInterface.prototype.set = function(prop, to) {
+  if (!/fill|stroke|shadow/i.test(prop))
+    this.eventContext[prop] = to;
   this.context[prop] = to;
   return this;
 };
@@ -157,20 +159,21 @@ CanvasEventedInterface.prototype.get = function(prop) {
 
 CanvasEventedInterface.prototype.findIDAtPoint = function(x, y) {
 
-  var d = this.eventContext.getImageData(x - 1, y - 1, 3, 3).data,
+  var d = this.eventContext.getImageData(x - 2, y - 2, 5, 5).data,
       ids = {},
       id,
       mostCommonN = 0,
       mostCommonID,
-      pixelIndex;5
+      pixelIndex,
+      miss = {0:1,4:1,20:1,24:1}; // corners
 
   // 5 pixels. Central + surrounding.
   for (var i = 0, l = d.length; i < l; i += 4) {
 
     pixelIndex = 0 | i / 4;
 
-    if (pixelIndex === 4 || pixelIndex % 2) {
-
+    if (!(pixelIndex in miss)) {
+      
       id = getIDOfRGB(d[i], d[i + 1], d[i + 2]);
       ids[id] = ids[id] ? ids[id] + 1 : 1;
       if (ids[id] > mostCommonN) {
@@ -185,26 +188,37 @@ CanvasEventedInterface.prototype.findIDAtPoint = function(x, y) {
   return mostCommonID;
 };
 
-CanvasEventedInterface.prototype.emitMouseEvent = function(type, x, y) {
-  var id = this.findIDAtPoint(x, y),
-      event = new Event(type, {
-        x: x, 
-        y: y,
-        target: id
-      });
+CanvasEventedInterface.prototype.emitMouseEvent = function(id, type, x, y) {
+  id = id || this.findIDAtPoint(x, y);
+  var event = new Event(type, {
+    x: x, 
+    y: y,
+    target: id
+  });
   eventRegistry.emit(id + ':' + type, event);
+  this.emit(id + ':' + type, event);
   // Emit for unoccupied pixels:
   this.emit('*:' + type, event);
 };
 
+CanvasEventedInterface.prototype.on = function(id, event, handler) {
+  if (!handler) {
+    handler = event;
+    event = id;
+  } else {
+    event = id + ':' + event;
+  }
+  return EventedInterface.prototype.on.call(this, event, handler);
+};
+
 CanvasEventedInterface.prototype.click = function(x, y) {
-  return this.emitMouseEvent('click', x, y);
+  return this.emitMouseEvent(null, 'click', x, y);
 };
 CanvasEventedInterface.prototype.mousedown = function(x, y) {
-  return this.emitMouseEvent('mousedown', x, y);
+  return this.emitMouseEvent(null, 'mousedown', x, y);
 };
 CanvasEventedInterface.prototype.mouseup = function(x, y) {
-  return this.emitMouseEvent('mouseup', x, y);
+  return this.emitMouseEvent(null, 'mouseup', x, y);
 };
 CanvasEventedInterface.prototype.mousemove = function(x, y) {
 
@@ -221,12 +235,12 @@ CanvasEventedInterface.prototype.mousemove = function(x, y) {
   var eID = this.findIDAtPoint(x, y);
 
   if (this._curMouseOver !== eID) {
-    eventRegistry.emit(this._curMouseOver + ':mouseleave', new Event('mouseleave'));
-    eventRegistry.emit(eID + ':mouseenter', new Event('mouseenter'));
+    this.emitMouseEvent(this._curMouseOver, 'mouseleave', x, y);
+    this.emitMouseEvent(eID, 'mouseenter', x, y);
     this._curMouseOver = eID;
   }
 
-  return this.emitMouseEvent('mousemove', x, y);
+  return this.emitMouseEvent(null, 'mousemove', x, y);
 
 };
 
@@ -250,7 +264,9 @@ CanvasEventedInterface.prototype.drawThing = function(thing, x, y, width, height
     thing.on('mousedown', function(e) { this.id in me.drawn && me.emit('mousedown', e); });
     thing.on('mousemove', function(e) { this.id in me.drawn && me.emit('mousemove', e); });
     thing.on('mouseup', function(e) { this.id in me.drawn && me.emit('mouseup', e); });
-    //thing.on('mousemove', function(e) { me.emit('mousemove', e); });
+    thing.on('click', function(e) { this.id in me.drawn && me.emit('click', e); });
+    thing.on('mouseenter', function(e) { this.id in me.drawn && me.emit('mouseenter', e); });
+    thing.on('mouseleave', function(e) { this.id in me.drawn && me.emit('mouseleave', e); });
     this.drawn[thing.id] = true;
   }
 
@@ -260,6 +276,21 @@ CanvasEventedInterface.prototype.drawThing = function(thing, x, y, width, height
 
 CanvasEventedInterface.prototype.clear = function() {
   this.clearRect(0, 0, this.width, this.height);
+  return this;
+};
+
+CanvasEventedInterface.prototype.clearCompositeEffects = function() {
+  this.compositeEffectsCache = {
+    shadowBlur: this.get('shadowBlur')
+  };
+  this.set('shadowBlur', 0);
+  return this;
+};
+
+CanvasEventedInterface.prototype.restoreCompositeEffects = function() {
+  for (var i in this.compositeEffectsCache) {
+    this.set(i, this.compositeEffectsCache[i]);
+  }
   return this;
 };
 
@@ -325,7 +356,11 @@ Thing.prototype.draw = function() {
   if (signature in this.states) {
     // We have it saved, run the methods:
     this.clear();
+    this.clearCompositeEffects();
     this.drawThing(this.states[signature]);
+    this.restoreCompositeEffects();
+    if (!this.states[signature].canvas.parentNode)
+        document.body.appendChild(this.states[signature].canvas);
   } else {
     // Run for the first time with these args:
     this._drawFn.apply(this, args);
@@ -357,7 +392,9 @@ Thing.prototype.clone = function(doCopyEvents) {
     }
   }
 
+  clone.clearCompositeEffects();
   clone.drawThing(this, 0, 0, this.width, this.height, !!doCopyEvents);
+  this.restoreCompositeEffects();
 
   return clone;
 

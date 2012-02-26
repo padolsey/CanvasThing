@@ -71,4 +71,26 @@ document.body.appendChild(stage.getElement());
 
 We've added `smallCircle` to `bigCircle` and `bigCircle` to `stage` and we've appended the stage's `<canvas>` to `<body>`.
 
-Of course, we could have just added both circles directly to the stage. But, by adding `smallCircle` to `bigCircle` we've got a event-propagation tree, just like in the DOM. All supported events other than `mouseleave` and `mouseenter` will bubble.
+Of course, we could have just added both circles directly to the stage. But, by adding `smallCircle` to `bigCircle` we've got an event-propagation tree, just like in the DOM. All supported events other than `mouseleave` and `mouseenter` will bubble.
+
+### Events - more details
+
+When you instantiate a new CanvasThing it will automatically bind to all the supported events for its ID in the event-registry. The event-registry (`CanvasThing.events`) emits events like `23:click`, i.e. the Thing ID and the event-type. You don't have to worry about the event-registry because you just bind to the regular events on your `CanvasThing` instance.
+
+Whenever you place one Thing within another, the parent will bind some listeners to its new child so that it can bubble the event upwards.
+
+### How do the events work?
+
+CanvasThing is not a scene-graph. It doesn't really care about objects representing graphics. It cares about bitmaps. It utilises a shadow canvas to map pixels to IDs of CanvasThing instances.
+
+When you draw something to a CanvasThing it is drawn to an out-of-DOM events canvas of the same size. This context has overriden styles so that everything drawn to it is of special color codes that map to specific CanvasThing IDs. 
+
+When you click on the "root" (i.e. what you appended to the DOM) CanvasThing it'll query the RGB values at that x,y location in the events-canvas and from this it'll determine the ID and then trigger the event on your magical CanvasThing object. To avoid issues of anti-aliasing at shape-edges, it checks some of the surrounding RGB values as well. 
+
+
+
+
+
+
+
+
