@@ -1,42 +1,44 @@
+CanvasThing is a low-level HTML5 Canvas API wrapper with graphical caching and mouse-event support.
 
-CanvasThing is a low-level HTML5 Canvas API wrapper with graphical buffering and event support.
-
-You work with the same canvas API that you know and love, with only one difference: before, you would do:
-
-```javascript
-context.fillStyle = 'red';
-```
-
-With CanvasThing you have to do:
+A `CanvasThing` instance is essentially a new canvas 2D context that you can treat just like regular. 
 
 ```javascript
-canvasThingInstance.set('fillStyle', 'red');
+var c = new CanvasThing(200, 200);
+
+document.body.appendChild(c.getElement());
+
+c.set('fillStyle', 'red');
+c.fillRect(0, 0, 100, 100);
 ```
 
-This is for all settable properties that you'd usually find on a 2D context.
+You'll notice that instead of doing `c.fillStyle=...` we're doing `c.set('fillStyle', ...)`. This is the only major difference between a regular 2DContext and CanvasThing.
 
+### Events
 
+CanvasThing is quite special because each instance can listen for events in its populated pixels. So, we can bind a `click` listener to the red square we created like this:
 
-What does this mean?
+```javascript
+// Let's do some chaining too:
 
-It means you can do stuff like:
+document.body.appendChild(
 
-var myCanvas = new CanvasThing(700, 700);
+  new CanvasThing(200, 200)
+    .set('fillStyle', 'red')
+    .fillRect(0, 0, 100, 100)
+    .on('click', function() {
+      alert('You clicked on the red square');
+    })
+    .getElement() // append actual <canvas> to body
 
-var myCircle = new CanvasThing(100, 100, function(color) {
-	this.beginPath();
-	this.arc(50, 50, 50, 0, Math.PI*2, false);
-	this.closePath();
-	this.set('fillStyle', color);
-	this.fill();
-});
+);
+```
 
-myCircle
-	.draw('red')
-	.place(myCanvas, 350, 350);
-	.on('mouseenter', function() {
-		myCircle.draw('blue');
-	})
-	.on('mouseleave', function() {
-		myCircle.draw('red');
-	})
+CanvasThing supports the following events:
+
+ * click
+ * mouseenter
+ * mouseleave
+ * mousedown
+ * mouseup
+ * mousemove
+
